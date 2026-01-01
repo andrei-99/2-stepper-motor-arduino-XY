@@ -1,23 +1,45 @@
 #include "GyverPlanner2.h"
 #include "EncButton.h"
+#include <AsyncStream.h>
+#include <GParser.h>
 Stepper< STEPPER2WIRE > stepperX(6, 7);
 Stepper< STEPPER2WIRE > stepperY(8, 9);
 GPlanner2< STEPPER2WIRE, 2 > planner;
 Button GoNextButton(2);
 EncButton TimeAdjEnc(4, 3, 5);
- 
+AsyncStream<100> Portal(&Serial, '\n', 20);
+
+// Диапазоны управляющей команды
+const int CMD_MIN  = 0;
+const int CMD_MAX  = 99;
+
+// Диапазоны координат
+const int COORD_MIN = 0;
+const int COORD_MAX = 1200;
+
+// Диапазоны времени (мс)
+const int TIME_MIN = 100;
+const int TIME_MAX = 4000;
+/* ===================== ДАННЫЕ ===================== */
+
+int command = 0;
+// массив координат для Planner, 0-0 по умолч. 
+int path[1][2] = {
+  {0, 0}
+};
+int moveTime = 0;
+
 //время налива при включении 100 мс, текущие положения, сдвиг к первой точке
 uint16_t TSpit = 100, XCurr = 0, YCurr = 0, XOrigin = 35, YOrigin = 90;
 uint8_t XSteps = 5, YSteps = 3, XShift = 10, YShift = 10; //кол-во шагов и сдвиг
 uint8_t XCount = 0, YCount = 0; // счетчики шагов 0 о умолч
 int8_t XDir = 1, YDir = 1; //направление +1 или -1 
-// массив координат для Planner, 0-0 по умолч. 
-int path[1][2] = {
-  {0, 0}
-};
+
 
 void setup() {
 Serial.begin(115200);
+Serial.println("Let's begin");
+
 pinMode(13, OUTPUT);
 digitalWrite(13, LOW);
   // добавляем шаговики на оси
@@ -50,8 +72,6 @@ path[0][1] = YCurr;
 planner.addTarget(path[0], 1);
 MathinNext();
 }
-
-
 
 if (TimeAdjEnc.turn()){
 TSpit += TimeAdjEnc.dir() * 50;
